@@ -266,8 +266,21 @@ function setStep(n) {
 
 const searchInput = document.getElementById('searchInput');
 const dropdown = document.getElementById('dropdown');
+let ddFocus = -1; // 現在フォーカス中の候補インデックス
+
+function ddItems() { return dropdown.querySelectorAll('.di[data-code]'); }
+
+function ddHighlight(idx) {
+  const items = ddItems();
+  items.forEach(el => el.classList.remove('active'));
+  if (idx < 0 || idx >= items.length) { ddFocus = -1; return; }
+  ddFocus = idx;
+  items[idx].classList.add('active');
+  items[idx].scrollIntoView({ block: 'nearest' });
+}
 
 searchInput.addEventListener('input', function() {
+  ddFocus = -1;
   const raw = this.value.trim();
   if (!raw) { dropdown.classList.remove('show'); return; }
   const words = raw.split(/\s+/).map(norm).filter(Boolean);
@@ -280,12 +293,31 @@ searchInput.addEventListener('input', function() {
     : '<div class="di" style="color:var(--muted);cursor:default;font-size:12px">該当なし</div>';
   dropdown.classList.add('show');
 });
+
+searchInput.addEventListener('keydown', function(e) {
+  const items = ddItems();
+  if (!dropdown.classList.contains('show') || !items.length) return;
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    ddHighlight(ddFocus < items.length - 1 ? ddFocus + 1 : 0);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    ddHighlight(ddFocus > 0 ? ddFocus - 1 : items.length - 1);
+  } else if (e.key === 'Enter' && ddFocus >= 0) {
+    e.preventDefault();
+    selectPioneer(DRUGS.find(d => d.code === items[ddFocus].dataset.code));
+  } else if (e.key === 'Escape') {
+    dropdown.classList.remove('show');
+    ddFocus = -1;
+  }
+});
+
 dropdown.addEventListener('click', e => {
   const item = e.target.closest('[data-code]');
   if (item) selectPioneer(DRUGS.find(d => d.code === item.dataset.code));
 });
 document.addEventListener('click', e => {
-  if (!e.target.closest('.search-wrap')) dropdown.classList.remove('show');
+  if (!e.target.closest('.search-wrap')) { dropdown.classList.remove('show'); ddFocus = -1; }
 });
 
 function selectPioneer(drug) {
@@ -311,6 +343,8 @@ function selectPioneer(drug) {
   document.getElementById('addBtn').disabled = false;
   document.getElementById('calcBtn').disabled = false;
   document.getElementById('results').classList.remove('show');
+  // 先発品確定後、後発品selectへ自動フォーカス
+  setTimeout(() => document.getElementById('geSelect').focus(), 50);
 }
 
 function buildGESelect(drug, isExpanded) {
@@ -492,10 +526,10 @@ function toggleDt(el) {
 const fmt  = n => n.toLocaleString();
 const sign = n => (n>=0?'+':'')+n.toLocaleString();
 
+// 数値入力欄でEnter → 計算実行
 document.querySelectorAll('input[type="number"]').forEach(el => {
   el.addEventListener('keydown', e => { if(e.key==='Enter') calculate(); });
 });
-
 </script>
 </body>
 </html>
