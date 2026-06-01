@@ -21,8 +21,8 @@ h1{font-size:clamp(18px,4vw,25px);font-weight:700;margin-bottom:5px}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;box-shadow:0 4px 20px rgba(0,0,0,.4)}
 .card-title{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:13px;display:flex;align-items:center;gap:8px}
 .card-title::before{content:'';display:block;width:3px;height:14px;background:var(--accent);border-radius:2px}
-input[type="text"],input[type="number"],select{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:inherit;font-size:14px;padding:10px 13px;outline:none;transition:border-color .2s}
-input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(88,166,255,.1)}
+input[type="text"],input[type="number"],select{width:100%;background:var(--bg);border:2px solid #4a5568;border-radius:8px;color:var(--text);font-family:inherit;font-size:14px;padding:9px 13px;outline:none;transition:border-color .2s,box-shadow .2s}
+input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(88,166,255,.18)}
 input::placeholder{color:var(--muted);font-size:12px}
 select option{background:var(--s2)}
 label.fl{display:block;font-size:11px;color:var(--muted);margin-bottom:5px;font-weight:600}
@@ -140,6 +140,7 @@ table.bt td:last-child{text-align:right;font-family:'JetBrains Mono',monospace;f
     <input type="text" id="searchInput"
       placeholder="薬品名・成分名（スペース区切りでAND検索 / ひらがな・カタカナ可）"
       autocomplete="off">
+    <button id="resetBtn" onclick="resetSearch()" title="リセット" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);background:rgba(139,148,158,.2);border:none;border-radius:50%;width:24px;height:24px;color:var(--muted);font-size:14px;cursor:pointer;line-height:1;transition:all .15s" onmouseover="this.style.background='rgba(247,129,102,.3)';this.style.color='var(--warn)'" onmouseout="this.style.background='rgba(139,148,158,.2)';this.style.color='var(--muted)'">✕</button>
     <div class="dropdown" id="dropdown"></div>
   </div>
   <div class="shint">例：「ひるどいど 軟膏」「ルネスタ 3mg」「エスゾピクロン 錠」</div>
@@ -198,6 +199,7 @@ table.bt td:last-child{text-align:right;font-family:'JetBrains Mono',monospace;f
   <div class="btn-row">
     <button class="btn-add" id="addBtn" disabled onclick="addEntry()">＋ 追加して別の薬も計算</button>
     <button class="calc-btn" id="calcBtn" disabled onclick="calculate()">計算する</button>
+    <button onclick="resetAll()" title="全てリセット" style="flex:0 0 auto;background:var(--s2);border:2px solid #4a5568;border-radius:8px;color:var(--muted);font-family:inherit;font-size:13px;font-weight:600;padding:11px 16px;cursor:pointer;transition:all .2s;white-space:nowrap" onmouseover="this.style.borderColor='var(--warn)';this.style.color='var(--warn)'" onmouseout="this.style.borderColor='#4a5568';this.style.color='var(--muted)'">↺ リセット</button>
   </div>
 </div>
 
@@ -281,6 +283,9 @@ function ddHighlight(idx) {
 
 searchInput.addEventListener('input', function() {
   ddFocus = -1;
+  document.getElementById('resetBtn').style.display = this.value ? 'block' : 'none';
+  // padding-right確保（リセットボタンと被らないように）
+  this.style.paddingRight = this.value ? '36px' : '13px';
   const raw = this.value.trim();
   if (!raw) { dropdown.classList.remove('show'); return; }
   const words = raw.split(/\s+/).map(norm).filter(Boolean);
@@ -309,6 +314,7 @@ searchInput.addEventListener('keydown', function(e) {
   } else if (e.key === 'Escape') {
     dropdown.classList.remove('show');
     ddFocus = -1;
+    searchInput.blur();
   }
 });
 
@@ -319,6 +325,28 @@ dropdown.addEventListener('click', e => {
 document.addEventListener('click', e => {
   if (!e.target.closest('.search-wrap')) { dropdown.classList.remove('show'); ddFocus = -1; }
 });
+
+function resetAll() {
+  entries = [];
+  resetSearch();
+  renderAdded();
+  document.getElementById('results').classList.remove('show');
+}
+
+function resetSearch() {
+  pendingDrug = null; pendingGE = null; expanded = false;
+  searchInput.value = '';
+  searchInput.style.paddingRight = '13px';
+  document.getElementById('resetBtn').style.display = 'none';
+  dropdown.classList.remove('show'); ddFocus = -1;
+  document.getElementById('selDrug').classList.remove('show');
+  document.getElementById('geBlock').classList.remove('show');
+  document.getElementById('qtyBlock').classList.remove('show');
+  document.getElementById('addBtn').classList.remove('show');
+  if (!entries.length) document.getElementById('calcBtn').disabled = true;
+  setStep(1);
+  searchInput.focus();
+}
 
 function selectPioneer(drug) {
   pendingDrug = drug; pendingGE = null; expanded = false;
@@ -399,7 +427,8 @@ function addEntry() {
   entries.push({drug:pendingDrug, qty, days, rate, selectedGE:pendingGE});
   pendingDrug = null; pendingGE = null; expanded = false;
   searchInput.value = '';
-  document.getElementById('selDrug').classList.remove('show');
+  searchInput.style.paddingRight = '13px';
+  document.getElementById('resetBtn').style.display = 'none';
   document.getElementById('geBlock').classList.remove('show');
   document.getElementById('qtyBlock').classList.remove('show');
   document.getElementById('addBtn').classList.remove('show');
